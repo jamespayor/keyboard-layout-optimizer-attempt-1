@@ -1,4 +1,3 @@
-# original-layout-evolver
 Keyboard Layout Evolver (Original)
 ==================================
 
