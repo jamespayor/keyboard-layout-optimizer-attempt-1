@@ -1,0 +1,31 @@
+post
+
+- how to find a keyboard layout?
+ - assign cost for pressing each key, relative to index finger home row
+ - objective is convex, and easy to solve: assign most frequent letter to best key, and so on
+ - problem: sequences of characters can be awkward to type
+ - problem: workload might be uneven between fingers
+ - need to include terms in our cost that penalize awkward sequences, and uneven workload
+ - we add a term proportional to the max finger workload, so bringing down the worst workload improves the objective
+ - we add a term proportional to the average cost of typing bigrams
+  - hopefully if we can type all pairs of common characters well, we can type sequences of characters well
+ - adding these terms makes objective non-convex, so we try genetic algorithms to optimize it
+ - as it happens, we often get stuck on local optima, but it optimizes the objective very well
+  - most important part: get the right objective
+  - second most important part: find a bunch of good candidates to optimize heavily
+ - to optimize objective well, try many different solutions to get a good number near optimal, and slowly turn up the temperature
+  - i.e. slowly add in the complicated components corresponding to bigrams and to uneven workload.
+  - e.g. add in 3*temp*maxFingerWorkload to equalize work, and add in 6*temp*averageBigramCost to make bigrams easy to type
+ - visualizing what's happening
+  - look at evolution of keyboards
+  - try tweaks and see how cost changes
+  - visualize bigram costs (model.bigramDebug(row, col))
+ - results:
+  - optimal for code?
+  - optimal for writing?
+  - what common layouts look like when optimized?
+  - how much worse are common layouts?
+ - notes:
+  - objective function doesn't include commands like Control+C and etc.
+   - to take these into consideration, evolve a layout, then twiddle keys like C and V into reasonable places and lock them in place.
+   - if the new layout you evolve from that is decent, then lucky you. If not, twiddle a bit more / accept slightly worse placement.
