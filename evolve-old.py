@@ -1,6 +1,6 @@
 from sys import stdin
 from random import randint, choice
-from model import TypingModel
+from model import Model, Layouts
 
 def evolve(seeds, score, spawn, optimize, lowTemp = 0., highTemp = 1., processPool=None, results=5, children=50, population=500, iterations = 50):
 	pool = list(reversed(sorted((score(seed, 0.0), seed) for seed in seeds)))
@@ -12,7 +12,7 @@ def evolve(seeds, score, spawn, optimize, lowTemp = 0., highTemp = 1., processPo
 	for i in range(iterations):
 		newPool = []
 		fertility = children
-		temp = lowTemp + (highTemp - lowTemp) * i * 1. / iterations
+		temp = highTemp + (lowTemp - highTemp) * i * 1. / iterations
 
 		newPop = 0
 		todo = []
@@ -39,11 +39,11 @@ def evolve(seeds, score, spawn, optimize, lowTemp = 0., highTemp = 1., processPo
 		if False and (i % 100) == 0 and i > 0:
 			print '------------------------------'
 			print
-			print TypingModel.displayLayoutSimple(newPool[0][1])
+			print Model.displayLayoutSimple(newPool[0][1])
 			print
 			print '------------------------------'
 			print
-			print TypingModel.displayLayoutSimple(newPool[1][1])
+			print Model.displayLayoutSimple(newPool[1][1])
 			print
 			print '------------------------------'
 			__import__('sys').stdin.flush()
@@ -53,7 +53,7 @@ def evolve(seeds, score, spawn, optimize, lowTemp = 0., highTemp = 1., processPo
 			print
 			print "New best: ", best[0]
 			print '~~~~~~~~~~~~~~~~~~~~'
-			print TypingModel.displayLayoutSimple(best[1])
+			print Model.displayLayoutSimple(best[1])
 			print '~~~~~~~~~~~~~~~~~~~~'
 			print
 
@@ -61,102 +61,33 @@ def evolve(seeds, score, spawn, optimize, lowTemp = 0., highTemp = 1., processPo
 
 
 def main():
-	seedA = TypingModel.stringToLayout(r'''
-		~$0123456789^
-		`*/{[(=+)]}\%
 
-		"_FRLDTIOBQ|@
-		'-frldtiobq&#
-
-		:USNHPMEAGY
-		;usnhpmeagy
-
-		ZXCVWJK<>?
-		zxcvwjk,.!
-	''')
-
-	seed = TypingModel.stringToLayout(r'''
-		~$0123456789^
-		`*/{[(=+)]}\%
-
-		_YFRLDTUIPQ|@
-		-yfrldtuipq&#
-
-		BGSNHMOEA:"
-		bgsnhmoea;'
-
-		ZXCVWJK<>?
-		zxcvwjk,.!
-	''')
-
-
-	# seeds = list(TypingModel.layouts.values())
+	seed = Layouts.QWERTY
 
 	firstRow = 1
-	lastRow = 2
-	firstCol = (0, 1, 0, 0)
-	lastCol = (len(seed[0])-1, len(seed[1])-1-3, len(seed[2])-1-0, len(seed[3])-1-0)
+	lastRow = 3
+	firstCol = (0, 0, 0, 0)
+	lastCol = (len(seed[0])-1-0, len(seed[1])-1-0, len(seed[2])-1-0, len(seed[3])-1-0)
 	firstFreeRow = 1
-	lastFreeRow = 2
+	lastFreeRow = 3
 
-	if len(__import__('sys').argv) > 1:
+	if len(__import__('sys').argv) == 1:
 		print "Building model from text on standard input...",
-		model = TypingModel(stdin.read())
-		import cPickle
-		with open('model.pickle', 'w') as f:
-			cPickle.dump(model, f)
+		model = Model(stdin.read())
 		print "Done."
 		return
 	else:
 		print "Loading saved model...",
-		import cPickle
-		model = cPickle.load(open('model.pickle'))
+		model = Model.load(__import__('sys').argv[1])
 		print "Done."
-
-
-	lay1 = TypingModel.stringToLayout('''
-		~$0123456789^
-		`*/{[(=+)]}\%
-
-		_DLNUMTEABQ|@
-		-dlnumteabq&#
-
-		YSRHPGFIO:"
-		ysrhpgfio;'
-
-		ZXCVWJK<>?
-		zxcvwjk,.!
-	''')
-
-
-	lay2 = TypingModel.stringToLayout('''
-		~$0123456789^
-		`*/{[(=+)]}\%
-
-		_"LUYMDIABQ@|
-		-'luymdiabq#&
-
-		FRSNHGTEOP:
-		frsnhgteop;
-
-		ZXCVWJK<>?
-		zxcvwjk,.!
-	''')
-
-
-	#print model(lay1, 1.), model(lay2, 1.)
-	#for name, l in model.layouts.items():
-	#	print name, model(l, 1.)
-	#return
-
 
 	def mutateLayout(layout):
 		
-		#if randint(0,5000) == 0:
-		#	return choice(TypingModel.layouts.values())
+		if randint(0,5000) == 0:
+			return choice(Layouts.layouts.values())
 
 		def doMutate(l):
-			op = 3 #randint(0,10)
+			op = randint(0,10)
 			if op == 0:
 				row = randint(firstFreeRow, lastFreeRow)
 				move = randint(1,4)
@@ -179,7 +110,7 @@ def main():
 				l[r1][c1], l[r2][c2] = l[r2][c2], l[r1][c1]
 
 
-			if randint(0,15) > 0:
+			if randint(0,5) > 0:
 				doMutate(l)
 
 		result = list(list(thing) for thing in layout)
@@ -187,8 +118,8 @@ def main():
 		return result
 
 	def optimizeLayout(score, layout):
-		return layout
-		# TEMP: does this make things better overall?
+		# return layout
+		# TODO: does this make things better overall? If not, uncomment the above line.
 
 		layout = [[x for x in l] for l in layout]
 		success = True
@@ -210,12 +141,7 @@ def main():
 		return layout
 
 
-	results = [seed] #[seed, seedA]
-	from results import keyboards#, preliminaryKeyboards
-	results = keyboards
-	#results = [lay2]
-	#results = preliminaryKeyboards
-
+	results = list(Layouts.layouts.values())
 	cycles = 40
 	steps = 15
 	iterations = 16
@@ -247,7 +173,7 @@ def main():
 			print
 			print '============================'
 			print
-			print TypingModel.displayLayout(seed)
+			print Model.displayLayout(seed)
 			print
 			print '============================'
 			print
@@ -261,7 +187,7 @@ def main():
 	for layout in results:
 		print '============================'
 		print
-		print TypingModel.displayLayout(layout)
+		print Model.displayLayout(layout)
 		print
 		print '============================'
 		print
@@ -273,14 +199,14 @@ def main():
 	print
 
 	final = dict()
-	for seed in dict((TypingModel.displayLayout(l), l) for l in results).values():
+	for seed in dict((Model.displayLayout(l), l) for l in results).values():
 		layout, = evolve([seed], model, mutateLayout, optimizeLayout, 1., 1., processPool=pool, results=1, children=1000, population=15000, iterations=11)
 		print
-		print TypingModel.displayLayout(layout)
+		print Model.displayLayout(layout)
 		print
 		print "========================================"
 		print
-		final[TypingModel.displayLayout(layout)] = layout
+		final[Model.displayLayout(layout)] = layout
 
 	print
 	print '~~~~~~~~~~~~~~~~'
@@ -290,7 +216,7 @@ def main():
 		print
 		print '# score = %.4f' % s
 		print "'''"
-		print TypingModel.displayLayout(l)
+		print Model.displayLayout(l)
 		print "''',"
 
 if __name__ == '__main__':

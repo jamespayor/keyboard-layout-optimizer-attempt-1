@@ -114,7 +114,7 @@ class Model(object):
 			if i % 3 < 2:
 				for key in layout[i/3]:
 					if key[0] in cls.specialCharacterToString:
-						key = cls.specialCharacterToString[key[0]] if (i%3) == 0 else ' '
+						key = cls.specialCharacterToString[key[0]] + ' '
 					line.append(key[i%3])
 			lines.append(line)
 		return '\n'.join(map(''.join, lines))
@@ -342,10 +342,10 @@ class Layouts(object):
 	''')
 
 	BETA = Model.stringToLayout(r'''
-		~$0123456789^>
+		~$0123456789^<
 		`*/{[(=+)]}\%
 
-		_NSDULTIOGQ|@<
+		_NSDULTIOGQ|@>
 		-nsdultiogq&#
 
 		^YBRHFPMEA:"
@@ -384,10 +384,10 @@ class Layouts(object):
 	''')
 
 	EPSILON = Model.stringToLayout(r'''
-		~$0123456789^>
+		~$0123456789^<
 		`*/{[(=+)]}\%
 
-		_FBRLDTIOGQ|@<
+		_FBRLDTIOGQ|@>
 		-fbrldtiogq&#
 
 		^:USNHPMEA"Y
@@ -398,10 +398,10 @@ class Layouts(object):
 	''')
 
 	THETA = Model.stringToLayout(r'''
-		~$0123456789^>
+		~$0123456789^<
 		`*/{[(=+)]}\%
 
-		_BPNLMTOUGQ|@<
+		_BPNLMTOUGQ|@>
 		-bpnlmtougq&#
 
 		^:SIRHFDEA"Y
