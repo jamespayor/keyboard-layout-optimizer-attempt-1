@@ -159,15 +159,29 @@ class Model(object):
 			col1, col2 = col2, col1
 			layoutCol1, layoutCol2 = layoutCol2, layoutCol1
 
-		if finger1 == 0 and finger2 == 3: return 1.5 * cost if abs(layoutCol1 - layoutCol2) < 4 else 3. * cost # not very nice if index and pinky
+		if finger1 == 0 and finger2 == 3:
+			# It's not very nice if we're using index and pinky.
+			# It's even worse if the hand is stretched apart.
+			# In layout space:
+			# - 6 columns is the distance between the home positions.
+			# - 7 columns means the index finger is moved, but the pinky isn't.
+			# - >7 columns means the pinky is stretched.
+			return 1.5 * cost if abs(layoutCol1 - layoutCol2) <= 6 else 2. * cost if abs(layoutCol1 - layoutCol2) <= 7 else 3. * cost
+
 		if finger1 == 0:
+			# Other pinky cases.
 			if row2 - row1 == 1: return 0.3 * cost
 			if row2 == row1: return 0.5 * cost
 			return 1.5 * cost if finger2 == 1 else 1. * cost
+
 		if finger2 == 3:
-			if row1 - row2 == 1: return 0.3 * cost
-			if row1 == row2: return 0.5 * cost
-			return 1. * cost
+			# Index finger cases, where it's not index and pinky.
+			indexFingerInHomeColumn = (layoutCol2 == cls.horizontalHome[cls.fingerAssignment[layoutCol2]])
+			if row1 - row2 == 1:
+				return 0.5 * cost if indexFingerInHomeColumn else 1.3 * cost
+			if row1 == row2: return 0.7 * cost if indexFingerInHomeColumn else 1.5 * cost
+			return 1.5 * cost if indexFingerInHomeColumn else 1.3 * cost # it's easier in this case if the index finger isn't in its home row
+
 		# must be middle and ring finger now
 		if row1 == row2: return 0.8 * cost
 		if row2 - row1 == 1: return 1.2 * cost
@@ -249,11 +263,16 @@ class Model(object):
 			c1, c2 = layout[r][c]
 			fingerWork[self.fingerAssignment[self.layoutColumnMap[r][c]]] += self.typeCost(r, c) * ((self.counts[c1] if c1 != ' ' else 0.) + (self.counts[c2] if c2 != ' ' else 0.))
 
-		return (0.1 + 0.9 * temperature) * self.characterWeighting * sum(fingerWork) + (0.9 - temperature * 0.9) * (
-			0.2 * self.characterWeighting * max(fingerWork) +
-			0.8 * self.bigramWeighting * sum(self.bigramCost(lookup[c1], lookup[c2]) * count for count, (c1, c2) in self.importantBigrams)
-			# sum(1. if self.fingerAssignment[self.layoutColumnMap[r][c]] < 4 else 0. for x in 'aeiou' for r, c in [lookup[x]]) # make vowels all on the right hand
-		)
+		averageFingerWork = self.characterWeighting * sum(fingerWork) / 8.0
+		worstFingerWork = self.characterWeighting * max(fingerWork)
+
+		if temperature > 0.75:
+			# Might as well approximate while the component for bigrams is small.
+			return (0.1 + 0.9 * temperature) * averageFingerWork + 0.9 * (1.0 - temperature) * worstFingerWork
+
+		bigramAverageFingerWork = self.bigramWeighting * sum(self.bigramCost(lookup[c1], lookup[c2]) * count for count, (c1, c2) in self.importantBigrams) / 2.0
+
+		return (0.1 + 0.9 * temperature) * averageFingerWork + 0.9 * (1.0 - temperature) * (0.3 * worstFingerWork + 0.7 * bigramAverageFingerWork)
 			
 
 class Layouts(object):
