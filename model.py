@@ -140,12 +140,12 @@ class Model(object):
 			col1, col2 = col2, col1
 			layoutCol1, layoutCol2 = layoutCol2, layoutCol1
 		
-		cost = cls.baseCost[finger1] + cls.baseCost[finger2]
-
-		# add term corresponding to the stretching involved.  Multiply up cost if e.g. 1 finger apart but 2 cols apart?
+		# These costs should be a bit less extreme than the single finger costs.
+		# This is achieved by regressing the cost toward the base cost for each finger.
+		cost = 0.3 * (cls.baseCost[finger1] + cls.baseCost[finger2]) + 0.7 * (cls.typeCost(row1, col1) + cls.typeCost(row2, col2))
 
 		if finger1 == finger2: return 4. * cost # same finger
-		if finger1 < 4 and finger2 >= 4: return 0.7 * cost # different hands
+		if finger1 < 4 and finger2 >= 4: return cost # different hands
 		
 		# same hand. penalize difficult arrangements
 		
@@ -170,22 +170,32 @@ class Model(object):
 
 		if finger1 == 0:
 			# Other pinky cases.
-			if row2 - row1 == 1: return 0.3 * cost
-			if row2 == row1: return 0.5 * cost
-			return 1.5 * cost if finger2 == 1 else 1. * cost
+			if row2 - row1 == 2: return 1.1 * cost
+			if row2 - row1 == 1: return cost
+			if row2 == row1: return 1.1 * cost
+			if row2 - row1 == -1: return 2. * cost
+			return 4. * cost
 
 		if finger2 == 3:
 			# Index finger cases, where it's not index and pinky.
 			indexFingerInHomeColumn = (layoutCol2 == cls.horizontalHome[cls.fingerAssignment[layoutCol2]])
 			if row1 - row2 == 1:
-				return 0.5 * cost if indexFingerInHomeColumn else 1.3 * cost
-			if row1 == row2: return 0.7 * cost if indexFingerInHomeColumn else 1.5 * cost
-			return 1.5 * cost if indexFingerInHomeColumn else 1.3 * cost # it's easier in this case if the index finger isn't in its home row
+				return 0.7 * cost if indexFingerInHomeColumn else 1.2 * cost
+			if row1 == row2: return cost if indexFingerInHomeColumn else 1.5 * cost
+			if row1 - row2 == -1:
+				if finger1 == 1: return 1.5 * cost
+				return 1.8 * cost if indexFingerInHomeColumn else 1.5 * cost # it's easier in this case if the index finger isn't in its home row
+
+			if row1 - row2 == 2:
+				return 1.2 * cost if indexFingerInHomeColumn else 1.8 * cost
+			if row1 - row2 == -2:
+				return 3.0 * cost
 
 		# must be middle and ring finger now
 		if row1 == row2: return 0.8 * cost
 		if row2 - row1 == 1: return 1.2 * cost
-		return 2. * cost
+		if row2 - row1 == -1: return 1.5 * cost
+		return 2.5 * cost
 
 	@classmethod
 	def bigramDebug(cls, R, C):
@@ -250,7 +260,10 @@ class Model(object):
 
 		# Taking 4000 bigrams captures the vast majority of typed bigrams as well as all the backspace and delete bigrams.
 		self.importantBigrams = sorted((count, bigram) for bigram, count in self.bigrams.items() if bigram[0] != bigram[1] and all(c not in bigram for c in ' \t\n'))[::-1][:4000]
-		self.bigramWeighting = 1.0 / sum(count for count, bigram in self.importantBigrams)
+		
+		# Bigrams duplicate everything, hence the divide-by-2 in the weighting.
+		self.bigramWeighting = 1.0 / (sum(count for count, bigram in self.importantBigrams) * 2.0)
+
 		#print '\n'.join('%s %d' % (bigram, count) for count, bigram in self.importantBigrams)
 	
 	def __call__(self, layout, simplicity = 0.0):
@@ -269,7 +282,7 @@ class Model(object):
 			# Might as well approximate while the component for bigrams is small.
 			return (0.1 + 0.9 * simplicity) * averageFingerWork + 0.9 * (1.0 - simplicity) * worstFingerWork
 
-		bigramAverageFingerWork = self.bigramWeighting * sum(self.bigramCost(lookup[c1], lookup[c2]) * count for count, (c1, c2) in self.importantBigrams) / 2.0
+		bigramAverageFingerWork = self.bigramWeighting * sum(self.bigramCost(lookup[c1], lookup[c2]) * count for count, (c1, c2) in self.importantBigrams)
 
 		return (0.1 + 0.9 * simplicity) * averageFingerWork + 0.9 * (1.0 - simplicity) * (0.3 * worstFingerWork + 0.7 * bigramAverageFingerWork)
 			
