@@ -191,13 +191,13 @@ class Model(object):
 	def bigramDebug(cls, R, C):
 		print '\n'.join(
 			' '.join(('%02.2f' % cls.bigramCost((R, C), (row, col))).rjust(5) if col >= 0 else ' '*5 for col in r)
-			for row, r in enumerate([range(13), range(-1,13), range(-1,11), range(-1,10)]))
+			for row, r in enumerate([range(14), range(-1,14), range(0,12), range(-1,10)]))
 
 	@classmethod
 	def costDebug(cls):
 		print '\n'.join(
 			' '.join(('%02.2f' % cls.typeCost(row,col)).rjust(5) if col >= 0 else ' '*5 for col in r)
-			for row, r in enumerate([range(13), range(-1,13), range(-1,11), range(-1,10)]))
+			for row, r in enumerate([range(14), range(-1,14), range(0,12), range(-1,10)]))
 
 
 	# We want to add in counts for the usage of backspace, delete, and caps lock.
@@ -243,7 +243,6 @@ class Model(object):
 		from ngrams import ngramCounts
 		allowedCharacters = set(c for row in self.defaultLayoutRows for col in row for c in col) | set(' \t\n')
 		text = ''.join(c for c in text if c in allowedCharacters)
-		self.temperature = 0.0
 		self.counts = self.adjustCounts(ngramCounts(1, text))
 		self.bigrams = self.adjustBigramCounts(ngramCounts(2, text))
 		self.totalCharacters = sum(self.counts.values())
@@ -254,7 +253,7 @@ class Model(object):
 		self.bigramWeighting = 1.0 / sum(count for count, bigram in self.importantBigrams)
 		#print '\n'.join('%s %d' % (bigram, count) for count, bigram in self.importantBigrams)
 	
-	def __call__(self, layout, temperature = 0.0):
+	def __call__(self, layout, simplicity = 0.0):
 		cells = [(row, col) for row in range(len(layout)) for col in range(len(layout[row]))]
 		lookup = dict((c, (row, col)) for row, col in cells for c in layout[row][col])
 		
@@ -266,13 +265,13 @@ class Model(object):
 		averageFingerWork = self.characterWeighting * sum(fingerWork) / 8.0
 		worstFingerWork = self.characterWeighting * max(fingerWork)
 
-		if temperature > 0.75:
+		if simplicity > 0.75:
 			# Might as well approximate while the component for bigrams is small.
-			return (0.1 + 0.9 * temperature) * averageFingerWork + 0.9 * (1.0 - temperature) * worstFingerWork
+			return (0.1 + 0.9 * simplicity) * averageFingerWork + 0.9 * (1.0 - simplicity) * worstFingerWork
 
 		bigramAverageFingerWork = self.bigramWeighting * sum(self.bigramCost(lookup[c1], lookup[c2]) * count for count, (c1, c2) in self.importantBigrams) / 2.0
 
-		return (0.1 + 0.9 * temperature) * averageFingerWork + 0.9 * (1.0 - temperature) * (0.3 * worstFingerWork + 0.7 * bigramAverageFingerWork)
+		return (0.1 + 0.9 * simplicity) * averageFingerWork + 0.9 * (1.0 - simplicity) * (0.3 * worstFingerWork + 0.7 * bigramAverageFingerWork)
 			
 
 class Layouts(object):
