@@ -79,7 +79,7 @@ class Model(object):
 
 	def _stringToLayout(stringToSpecialCharacter, s):
 		def alignLines(upper, lower):
-			for u, l in zip(upper + ' ' * min(max(0, len(lower) - len(upper)), 1), lower + ' ' * min(max(0, len(upper) - len(lower)), 1)):
+			for u, l in zip(upper + ' ' * min(max(0, len(lower) - len(upper)), 3), lower + ' ' * min(max(0, len(upper) - len(lower)), 3)):
 				if not str.isspace(u) or not str.isspace(l):
 					yield u, l
 
@@ -145,7 +145,7 @@ class Model(object):
 		cost = 0.3 * (cls.baseCost[finger1] + cls.baseCost[finger2]) + 0.7 * (cls.typeCost(row1, col1) + cls.typeCost(row2, col2))
 
 		if finger1 == finger2: return 4. * cost # same finger
-		if finger1 < 4 and finger2 >= 4: return cost # different hands
+		if finger1 < 4 and finger2 >= 4: return 0.8 * cost # different hands
 		
 		# same hand. penalize difficult arrangements
 		
@@ -159,6 +159,8 @@ class Model(object):
 			col1, col2 = col2, col1
 			layoutCol1, layoutCol2 = layoutCol2, layoutCol1
 
+		layoutColumnDistance = abs(layoutCol1 - layoutCol2)
+
 		if finger1 == 0 and finger2 == 3:
 			# It's not very nice if we're using index and pinky.
 			# It's even worse if the hand is stretched apart.
@@ -166,35 +168,39 @@ class Model(object):
 			# - 6 columns is the distance between the home positions.
 			# - 7 columns means the index finger is moved, but the pinky isn't.
 			# - >7 columns means the pinky is stretched.
-			return 1.5 * cost if abs(layoutCol1 - layoutCol2) <= 6 else 2. * cost if abs(layoutCol1 - layoutCol2) <= 7 else 3. * cost
+			return 1.5 * cost if layoutColumnDistance <= 6 else 2. * cost if layoutColumnDistance <= 7 else 3. * cost
 
 		if finger1 == 0:
 			# Other pinky cases.
-			if row2 - row1 == 2: return 1.1 * cost
-			if row2 - row1 == 1: return cost
-			if row2 == row1: return 1.1 * cost
-			if row2 - row1 == -1: return 2. * cost
-			return 4. * cost
+			if row1 == row2 - 2: return cost
+			if row1 == row2 - 1: return 0.9 * cost
+			if row1 == row2: return 1.1 * cost
+			if row1 == row2 + 1: return 1.6 * cost
+			return 3. * cost
 
 		if finger2 == 3:
 			# Index finger cases, where it's not index and pinky.
 			indexFingerInHomeColumn = (layoutCol2 == cls.horizontalHome[cls.fingerAssignment[layoutCol2]])
-			if row1 - row2 == 1:
-				return 0.7 * cost if indexFingerInHomeColumn else 1.2 * cost
-			if row1 == row2: return cost if indexFingerInHomeColumn else 1.5 * cost
-			if row1 - row2 == -1:
+			
+			if row2 == row1 + 1:
+				return 0.7 * cost if indexFingerInHomeColumn else 1.3 * cost
+			if row2 == row1:
+				return 0.9 * cost if indexFingerInHomeColumn else 1.2 * cost
+
+			if row2 == row1 - 1:
 				if finger1 == 1: return 1.5 * cost
 				return 1.8 * cost if indexFingerInHomeColumn else 1.5 * cost # it's easier in this case if the index finger isn't in its home row
 
-			if row1 - row2 == 2:
+			if row2 == row1 + 2:
 				return 1.2 * cost if indexFingerInHomeColumn else 1.8 * cost
-			if row1 - row2 == -2:
-				return 3.0 * cost
+			
+			# The remaining options are pretty bad.
+			return 2.5 * cost
 
 		# must be middle and ring finger now
 		if row1 == row2: return 0.8 * cost
-		if row2 - row1 == 1: return 1.2 * cost
-		if row2 - row1 == -1: return 1.5 * cost
+		if row1 == row2 - 1: return 1.2 * cost
+		if row1 == row2 + 1: return 1.5 * cost
 		return 2.5 * cost
 
 	@classmethod
