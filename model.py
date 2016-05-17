@@ -53,8 +53,8 @@ class Model(object):
 |---Pinky|Ring|-Mid-|Index--|  |--Index|-Mid-|Ring|Pinky------------------|
 
 12.0 10.0  3.0  3.0  4.0  4.0  4.5  3.0  3.0  3.0 12.0 16.0 18.0 20.0
-      8.0  2.2  1.5  1.6  2.5  3.0  1.6  1.5  2.2  8.0  8.0 12.0 16.0 24.0
- 8.0  4.0  2.0  1.5  1.0  1.4  1.4  1.0  1.5  2.0  4.0  6.0
+      8.0  2.2  1.5  1.6  2.5  3.0  1.6  1.5  2.2  8.0 10.0 12.0 16.0 24.0
+ 8.0  4.0  2.0  1.5  1.0  1.4  1.4  1.0  1.5  2.0  4.0  8.0
       5.0  4.0  3.0  1.2  2.5  2.0  1.2  3.0  4.0  6.0
 
 	'''.splitlines() if l.strip()][1:]]
@@ -112,6 +112,8 @@ class Model(object):
 		for i in range(len(layout)*3-1):
 			line = []
 			if i % 3 < 2:
+				if (i / 3) % 2 == 1:
+					line.append(' ')
 				for key in layout[i/3]:
 					if key[0] in cls.specialCharacterToString:
 						key = cls.specialCharacterToString[key[0]] + ' '
@@ -121,7 +123,7 @@ class Model(object):
 
 	@classmethod
 	def displayLayoutSimple(cls, layout):
-		return '\n'.join(''.join(x[1] if x[0] not in cls.specialCharacterToString else cls.specialCharacterToString[x[0]] for x in line) for line in layout[1:])
+		return '\n'.join(''.join(x[1] if x[0] not in cls.specialCharacterToString else cls.specialCharacterToString[x[0]][0] for x in (line if i % 2 == 1 else ('  ',) + line)) for i, line in enumerate(layout[1:]))
 
 	@classmethod
 	def typeCost(cls, layoutRow, layoutCol):
