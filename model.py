@@ -257,12 +257,13 @@ class Model(object):
 
 		return newCounts
 
-	def __init__(self, text):
-		from ngrams import ngramCounts
+	def __init__(self, lines):
 		allowedCharacters = set(c for row in self.defaultLayoutRows for col in row for c in col) | set(' \t\n')
-		text = ''.join(c for c in text if c in allowedCharacters)
-		self.counts = self.adjustCounts(ngramCounts(1, text))
-		self.bigrams = self.adjustBigramCounts(ngramCounts(2, text))
+
+		from ngrams import ngramCounts
+		self.counts = self.adjustCounts(ngramCounts(1, (c for line in lines for c in line if c in allowedCharacters)))
+		self.bigrams = self.adjustBigramCounts(ngramCounts(2, (c for line in lines for c in line if c in allowedCharacters)))
+
 		self.totalCharacters = sum(self.counts.values())
 		self.characterWeighting = 1.0 / self.totalCharacters if self.totalCharacters != 0 else 0.0
 
@@ -481,7 +482,7 @@ if __name__ == '__main__':
 		incorrectArguments = True
 
 	elif '-l' not in argv:
-		model = Model(stdin.read())
+		model = Model(list(stdin))
 	else:
 		path = argv[argv.index('-l') + 1]
 		try:
