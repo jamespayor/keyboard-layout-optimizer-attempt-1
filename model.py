@@ -130,8 +130,7 @@ class Model(object):
 		return cls.keyCost[layoutRow][layoutCol]
 
 	@classmethod
-	@memo
-	def bigramCost(cls, (row1, col1), (row2, col2)):
+	def _bigramCost(cls, (row1, col1), (row2, col2)):
 		layoutCol1 = cls.layoutColumnMap[row1][col1]
 		finger1 = cls.fingerAssignment[layoutCol1]
 		layoutCol2 = cls.layoutColumnMap[row2][col2]
@@ -205,6 +204,25 @@ class Model(object):
 		if row1 == row2 + 1: return 1.5 * cost
 		return 2.5 * cost
 
+	def populateBigramLookup(self):
+		self.bigramCostLookup = \
+			tuple(
+				tuple(
+					tuple(
+						tuple(
+							self._bigramCost((r1, c1), (r2, c2))
+							for c2 in range(len(self.defaultLayoutRows[r2]))
+						)
+						for r2 in range(len(self.defaultLayoutRows))
+					)
+					for c1 in range(len(self.defaultLayoutRows[r1]))
+				)
+				for r1 in range(len(self.defaultLayoutRows))
+			)
+
+	def bigramCost(self, (row1, col1), (row2, col2)):
+		return self.bigramCostLookup[row1][col1][row2][col2]
+
 	@classmethod
 	def bigramDebug(cls, R, C):
 		print '\n'.join(
@@ -258,6 +276,8 @@ class Model(object):
 		return newCounts
 
 	def __init__(self, lines):
+		self.populateBigramLookup()
+
 		allowedCharacters = set(c for row in self.defaultLayoutRows for col in row for c in col) | set(' \t\n')
 
 		from ngrams import ngramCounts
