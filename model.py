@@ -1,13 +1,6 @@
 from collections import defaultdict, Counter
 import math
 
-def memo(f):
-	cache = dict()
-	def wrap(*args):
-		if args not in cache: cache[args] = f(*args)
-		return cache[args]
-	return wrap
-
 class Model(object):
 
 	@staticmethod
@@ -205,28 +198,35 @@ class Model(object):
 		return 2.5 * cost
 
 	def populateBigramLookup(self):
-		self.bigramCostLookup = \
-			tuple(
-				tuple(
-					tuple(
-						tuple(
-							self._bigramCost((r1, c1), (r2, c2))
-							for c2 in range(len(self.defaultLayoutRows[r2]))
-						)
-						for r2 in range(len(self.defaultLayoutRows))
-					)
-					for c1 in range(len(self.defaultLayoutRows[r1]))
-				)
-				for r1 in range(len(self.defaultLayoutRows))
-			)
+		self.bigramCostLookup = tuple(
+			self._bigramCost((r1, c1), (r2, c2))
+			for r1 in range(len(self.defaultLayoutRows))
+			for c1 in range(len(self.defaultLayoutRows[r1]))
+			for r2 in range(len(self.defaultLayoutRows))
+			for c2 in range(len(self.defaultLayoutRows[r2]))
+		)
+
+		r2l = [0]
+		for r in self.defaultLayoutRows:
+			r2l.append(len(r) + r2l[-1])
+
+		c1m = r2l[-1]
+
+		r1l = [0]
+		for r in self.defaultLayoutRows:
+			r1l.append(len(r) * c1m + r1l[-1])
+
+		self._r2l = tuple(r2l)
+		self._c1m = c1m		
+		self._r1l = tuple(r1l)
 
 	def bigramCost(self, (row1, col1), (row2, col2)):
-		return self.bigramCostLookup[row1][col1][row2][col2]
+		return self.bigramCostLookup[self._r1l[row1] + self._c1m * col1 + self._r2l[row2] + col2]
 
 	@classmethod
 	def bigramDebug(cls, R, C):
 		print '\n'.join(
-			' '.join(('%02.2f' % cls.bigramCost((R, C), (row, col))).rjust(5) if col >= 0 else ' '*5 for col in r)
+			' '.join(('%02.2f' % cls._bigramCost((R, C), (row, col))).rjust(5) if col >= 0 else ' '*5 for col in r)
 			for row, r in enumerate([range(14), range(-1,14), range(0,12), range(-1,10)]))
 
 	@classmethod
@@ -287,14 +287,14 @@ class Model(object):
 		self.totalCharacters = sum(self.counts.values())
 		self.characterWeighting = 1.0 / self.totalCharacters if self.totalCharacters != 0 else 0.0
 
-		# Taking 4000 bigrams captures the vast majority of typed bigrams as well as all the backspace and delete bigrams.
-		self.importantBigrams = sorted((count, bigram) for bigram, count in self.bigrams.items() if bigram[0] != bigram[1] and all(c not in bigram for c in ' \t\n'))[::-1][:4000]
-		
+		# Taking 2500 bigrams captures the vast majority of typed bigram weight, including all of the backspace and delete bigrams.
+		self.importantBigrams = tuple(sorted((count, bigram) for bigram, count in self.bigrams.items() if bigram[0] != bigram[1] and all(c not in bigram for c in ' \t\n'))[::-1][:2500])
+
 		# Bigrams duplicate everything, hence the divide-by-2 in the weighting.
 		self.bigramWeighting = 1.0 / (sum(count for count, bigram in self.importantBigrams) * 2.0)
 
 		#print '\n'.join('%s %d' % (bigram, count) for count, bigram in self.importantBigrams)
-	
+
 	def __call__(self, layout, simplicity = 0.0):
 		cells = [(row, col) for row in range(len(layout)) for col in range(len(layout[row]))]
 		lookup = dict((c, (row, col)) for row, col in cells for c in layout[row][col])
@@ -471,6 +471,62 @@ class Layouts(object):
 		zxcvwjk,.!
 	''')
 
+	OMEGA = Model.stringToLayout(r'''
+		^?0123456789$~
+		%!/{[(=+)]}\*`
+
+		 <>SMFWUIOK_|@^
+		 ,.smfwuiok-&#
+
+		:BLRNPGTEAYQ
+		;blrnpgteayq
+
+		 ZXCVHJD"<>
+		 zxcvhjd'
+	''')
+
+	OMEGA3 = Model.stringToLayout(r'''
+		^?0123456789$~
+		%!/{[(=+)]}\*`
+
+		 <>SMFYUPGKJ|@^
+		 ,.smfyupgkj&#
+
+		:BLDNROEITWQ
+		;bldnroeitwq
+
+		 ZXCVH_A"<>
+		 zxcvh-a'
+	''')
+
+	OMEGA6 = Model.stringToLayout(r'''
+		^?0123456789$~
+		%!/{[(=+)]}\*`
+
+		 <>SMFUAPTY_|@^
+		 ,.smfuapty-&#
+
+		:BLRNHOEIDGQ
+		;blrnhoeidgq
+
+		 ZXCVWJK"<>
+		 zxcvwjk'
+	''')
+
+	OMEGA9 = Model.stringToLayout(r'''
+		^?0123456789$~
+		%!/{[(=+)]}\*`
+
+		 KRSMF"UGPJ_|@^
+		 krsmf'ugpj-&#
+
+		:BLDNHOETIYQ
+		;bldnhoetiyq
+
+		 ZXCV<>AW<>
+		 zxcv,.aw
+	''')
+
 	layouts = {
 		'QWERTY': QWERTY,
 		'DVORAK': DVORAK,
@@ -483,6 +539,10 @@ class Layouts(object):
 		'DELTA': DELTA,
 		'EPSILON': EPSILON,
 		'THETA': THETA,
+		'OMEGA': OMEGA,
+		'OMEGA3': OMEGA3,
+		'OMEGA6': OMEGA6,
+		'OMEGA9': OMEGA9,
 	}
 
 
